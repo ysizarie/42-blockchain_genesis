@@ -8,9 +8,10 @@ import binascii
 class Wallet():
     """docstring for Wallet"""
 
-    def __init__(self):
+    def __init__(self, node_id):
         self.private_key = None
         self.public_key = None
+        self.node_id = node_id
 
     def generate_keys(self):
         private_key = RSA.generate(1024, Crypto.Random.new().read)
@@ -25,7 +26,7 @@ class Wallet():
     def export_keys(self):
         if self.public_key is not None and self.private_key is not None:
             try:
-                with open('wallet.txt', mode='w') as fd:
+                with open('wallet_{}.txt'.format(self.node_id), mode='w') as fd:
                     fd.write(self.public_key)
                     fd.write('\n')
                     fd.write(self.private_key)
@@ -35,7 +36,7 @@ class Wallet():
 
     def import_keys(self):
         try:
-            with open('wallet.txt', mode='r') as fd:
+            with open('wallet_{}.txt'.format(self.node_id), mode='r') as fd:
                 keys = fd.readlines()
                 public_key = keys[0][:-1]
                 private_key = keys[1]

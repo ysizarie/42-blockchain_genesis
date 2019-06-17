@@ -1,0 +1,3 @@
+[{"index": 0, "previous_hash": "", "transactions": [], "proof": 0, "timestamp": 0}, {"index": 1, "previous_hash": "b81af956031df89ac679981fc6641addd4bc4fe49641570886ec258986cc976d", "transactions": [{"sender": "SYSTEM", "recipient": "30819f300d06092a864886f70d010101050003818d0030818902818100b601e3d778487fcfab360ddb50dd2a0e67cb1fe65ec03590cf753d4c26a0ac77ea8f300d1847bcf33d41ae16371b2230648469defef7bf782603344a9d5466fa1934b5c08d6716cfcb132a5d9e13ce266488e375aac149f11cf428c1dcc720d36cc0bdc00a7e750b32316874554ba4e2a18d89253e02c80ef0b15526a3cfa4c30203010001", "amount": 1, "signature": ""}], "proof": 87, "timestamp": 1560784262.8959842}]
+[]
+[]
