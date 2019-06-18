@@ -69,6 +69,33 @@ def get_network_ui():
     return send_from_directory('ui', 'network.html')
 
 
+@app.route('/broascast_transaction'. methods=['POST'])
+def broascast_tx():
+    values = request.get_json()
+    if not values:
+        response = {'message': 'Error. No data found.'}
+        return jsonify(response), 400
+    requirements = ['sender', 'recipient', 'amount', 'signature']
+    if not all(k in values for k in requirements):
+        response = {'message': 'Not enough transaction values.'}
+        return jsonify(response), 400
+    success = blockchain.add_transaction(values['recipient'], values['sender'], values['signature'], values['amount'])
+    if success:
+        response = {
+            'message': 'Succeess.',
+            'transaction': {
+                'sender': values['sender'],
+                'recipient': values['recipient'],
+                'signature': values['signature'],
+                'amount': values['amount']
+            }
+        }
+        return jsonify(response), 201
+    else:
+        response = {'message': 'Failed to create transaction.'}
+        return jsonify(response), 500
+
+
 @app.route('/transaction', methods=['POST'])
 def add_tx():
     if wallet.public_key is None:

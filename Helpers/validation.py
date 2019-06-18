@@ -20,7 +20,7 @@ class Validation():
     @staticmethod
     def verify_transaction(transaction, get_balance, check_balance=True):
         if check_balance:
-            sender_balance = get_balance()
+            sender_balance = get_balance(transaction.sender)
             return sender_balance >= transaction.amount and Wallet.verify_tx(transaction)
         return Wallet.verify_tx(transaction)
 

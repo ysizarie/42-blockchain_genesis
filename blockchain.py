@@ -8,6 +8,7 @@ from wallet import Wallet
 import hashlib as hl
 import json
 import pickle
+import requests
 
 
 MINING_REWARD = 1
@@ -79,15 +80,19 @@ class Blockchain():
             return None
         return self.__chain[-1]
 
-    def get_balance(self):
-        if self.public_key is None:
-            return None
+    def get_balance(self, sender=None):
+        if sender is None:
+            if self.public_key is None:
+                return None
+            user = self.public_key
+        else:
+            user = sender
         tx_sender = [[tx.amount for tx in block.transactions
-                      if tx.sender == self.public_key] for block in self.__chain]
+                      if tx.sender == user] for block in self.__chain]
         tx_recipient = [[tx.amount for tx in block.transactions
-                         if tx.recipient == self.public_key] for block in self.__chain]
+                         if tx.recipient == user] for block in self.__chain]
         open_tx_sender = [
-            tx.amount for tx in self.__open_transactions if tx.sender == self.public_key]
+            tx.amount for tx in self.__open_transactions if tx.sender == user]
         tx_sender.append(open_tx_sender)
         amount_sent = reduce(lambda tx_sum, val: tx_sum + sum(val)
                              if len(val) > 0 else tx_sum + 0, tx_sender, 0)
@@ -103,13 +108,23 @@ class Blockchain():
             last_block = [0]
         self.__chain.append([last_block, tx_amount])
 
-    def add_transaction(self, recipient, sender, signature, amount=1.0):
+    def add_transaction(self, recipient, sender, signature, amount=1.0, is_receiving=False):
         if self.public_key is None:
             return False
         transaction = Transaction(sender, recipient, signature, amount)
         if Validation.verify_transaction(transaction, self.get_balance):
             self.__open_transactions.append(transaction)
             self.save_data()
+            if not is_receiving:
+                for node in self.__nodes:
+                    url = 'http://{}/broadcast_transaction'.format(node)
+                    try:
+                        response = requests.post(url, json={"sender": sender, "recipient": recipient, "amount": amount, "signature": signature})
+                        if response.status_code == 400 or response.status_code == 500:
+                            print("Transaction declined, needs resolving.")
+                            return False
+                    except requests.exceptions.ConnectionError:
+                        continue
             return True
         return False
 
