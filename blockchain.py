@@ -1,13 +1,10 @@
 from functools import reduce
-from collections import OrderedDict
 from Helpers.hash_utils import hash_block
 from block import Block
 from transaction import Transaction
 from Helpers.validation import Validation
 from wallet import Wallet
-import hashlib as hl
 import json
-import pickle
 import requests
 
 
@@ -23,6 +20,7 @@ class Blockchain():
         self.public_key = public_key
         self.__nodes = set()
         self.node_id = node_id
+        self.resolve_conflicts = False
         self.load_data()
 
     @property
@@ -109,8 +107,8 @@ class Blockchain():
         self.__chain.append([last_block, tx_amount])
 
     def add_transaction(self, recipient, sender, signature, amount=1.0, is_receiving=False):
-        if self.public_key is None:
-            return False
+        # if self.public_key is None:
+        #     return False
         transaction = Transaction(sender, recipient, signature, amount)
         if Validation.verify_transaction(transaction, self.get_balance):
             self.__open_transactions.append(transaction)
@@ -119,7 +117,8 @@ class Blockchain():
                 for node in self.__nodes:
                     url = 'http://{}/broadcast_transaction'.format(node)
                     try:
-                        response = requests.post(url, json={"sender": sender, "recipient": recipient, "amount": amount, "signature": signature})
+                        response = requests.post(url, json={
+                                                 "sender": sender, "recipient": recipient, "amount": amount, "signature": signature})
                         if response.status_code == 400 or response.status_code == 500:
                             print("Transaction declined, needs resolving.")
                             return False
@@ -127,6 +126,28 @@ class Blockchain():
                         continue
             return True
         return False
+
+    def add_block(self, block):
+        transactions = [Transaction(
+            tx['sender'], tx['recipient'], tx['signature'], tx['amount']) for tx in block['transactions']]
+        valid_proof = Validation.valid_proof(
+            transactions[:-1], block['previous_hash'], block['proof'])
+        hashes_match = hash_block(self.chain[-1]) == block['previous_hash']
+        if not valid_proof or not hashes_match:
+            return False
+        new_block = Block(block['index'], block['previous_hash'],
+                          transactions, block['proof'], block['timestamp'])
+        self.__chain.append(new_block)
+        stored_tx = self.__open_transactions[:]
+        for itx in block['transactions']:
+            for optx in stored_tx:
+                if optx.sender == itx['sender'] and optx.recipient == itx['recipient'] and optx.amount == itx['amount'] and optx.signature == itx['signature']:
+                    try:
+                        self.__open_transactions.remove(optx)
+                    except ValueError:
+                        print("Item was already removed.")
+        self.save_data()
+        return True
 
     def mine_block(self):
         if self.public_key is None:
@@ -145,6 +166,19 @@ class Blockchain():
         self.__chain.append(block)
         self.__open_transactions = []
         self.save_data()
+        for node in self.__nodes:
+            url = 'http://{}/broadcast_block'.format(node)
+            new_block = block.__dict__.copy()
+            new_block['transactions'] = [
+                tx.__dict__ for tx in new_block['transactions']]
+            try:
+                response = requests.post(url, json={'block': new_block})
+                if response.status_code == 400 or response.status_code == 500:
+                    print("Block declined, needs resolving.")
+                if response.status_code == 409:
+                    self.resolve_conflicts = True
+            except requests.exceptions.ConnectionError:
+                continue
         return block
 
     def proof_of_work(self):
@@ -154,6 +188,31 @@ class Blockchain():
         while not Validation.valid_proof(self.__open_transactions, last_hash, proof):
             proof += 1
         return proof
+
+    def resolve(self):
+        winner_chain = self.chain
+        replace = False
+        for node in self.__nodes:
+            url = "http://{}/chain".format(node)
+            try:
+                response = requests.get(url)
+                node_chain = response.json()
+                node_chain = [Block(block['index'], block['previous_hash'], [Transaction(
+                    tx['sender'], tx['recipient'], tx['signature'], tx['amount']) for tx in block['transactions']],
+                    block['proof'], block['timestamp']) for block in node_chain]
+                node_chain_length = len(node_chain)
+                local_chain_length = len(winner_chain)
+                if node_chain_length > local_chain_length and Validation.verify_chain(node_chain):
+                    winner_chain = node_chain
+                    replace = True
+            except requests.exceptions.ConnectionError:
+                continue
+        self.resolve_conflicts = False
+        self.chain = winner_chain
+        if replace:
+            self.__open_transactions = []
+        self.save_data()
+        return replace
 
     def add_node(self, node):
         self.__nodes.add(node)
