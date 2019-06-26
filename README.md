@@ -34,8 +34,8 @@ After cloninig the repository and installing all additional software
 cd /.../path_to_repo/
 python3 node.py -p # -p means port, because my program uses webserver to work.
 ```
-Go to the project folder and star it by using python3 interpreter with -p flag.
-
+Go to the project folder and start it by using python3 interpreter with -p flag.
+Then You can open it in your browser like > localhost:5000
 
 ## Built with:
 * [Flask](http://flask.pocoo.org) - The web micro-framework used
