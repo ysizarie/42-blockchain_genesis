@@ -37,6 +37,8 @@ python3 node.py -p # -p means port, because my program uses webserver to work.
 Go to the project folder and start it by using python3 interpreter with -p flag.
 Then You can open it in your browser like > localhost:5000
 
+![alt text](Screen Shot 2019-06-30 at 18.01.09.png)
+
 ## Built with:
 * [Flask](http://flask.pocoo.org) - The web micro-framework used
 * Some libraries mentioned above
